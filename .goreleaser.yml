@@ -4,12 +4,6 @@ version: 2
 
 project_name: sshw
 
-metadata:
-  homepage: https://github.com/sshw/sshw
-  license: MIT
-  maintainers:
-    - "yinheli <me@yinheli.com>"
-
 builds:
   - binary: sshw
 
