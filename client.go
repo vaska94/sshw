@@ -15,7 +15,7 @@ import (
 
 	"golang.org/x/crypto/ssh"
 	"golang.org/x/crypto/ssh/agent"
-	"golang.org/x/crypto/ssh/terminal"
+	"golang.org/x/term"
 )
 
 var (
@@ -147,7 +147,7 @@ func setupKeyboardAuth(node *Node) (ssh.AuthMethod, cleanupFunc, error) {
 					return nil, err
 				}
 			} else {
-				b, err := terminal.ReadPassword(int(syscall.Stdin))
+				b, err := term.ReadPassword(int(syscall.Stdin))
 				if err != nil {
 					return nil, err
 				}
@@ -249,7 +249,7 @@ func (c *defaultClient) Login() {
 			if strings.Contains(msg, "no supported methods remain") && !strings.Contains(msg, "password") {
 				fmt.Printf("%s@%s's password:", c.clientConfig.User, host)
 				var b []byte
-				b, err = terminal.ReadPassword(int(syscall.Stdin))
+				b, err = term.ReadPassword(int(syscall.Stdin))
 				if err == nil {
 					p := string(b)
 					if p != "" {
@@ -277,16 +277,16 @@ func (c *defaultClient) Login() {
 	defer session.Close()
 
 	fd := int(os.Stdin.Fd())
-	state, err := terminal.MakeRaw(fd)
+	state, err := term.MakeRaw(fd)
 	if err != nil {
 		l.Error(err)
 		return
 	}
-	defer terminal.Restore(fd, state)
+	defer term.Restore(fd, state)
 
-	//changed fd to int(os.Stdout.Fd()) because terminal.GetSize(fd) doesn't work in Windows
+	//changed fd to int(os.Stdout.Fd()) because term.GetSize(fd) doesn't work in Windows
 	//reference: https://github.com/golang/go/issues/20388
-	w, h, err := terminal.GetSize(int(os.Stdout.Fd()))
+	w, h, err := term.GetSize(int(os.Stdout.Fd()))
 
 	if err != nil {
 		l.Error(err)
@@ -340,7 +340,7 @@ func (c *defaultClient) Login() {
 			oh = h
 		)
 		for {
-			cw, ch, err := terminal.GetSize(fd)
+			cw, ch, err := term.GetSize(fd)
 			if err != nil {
 				break
 			}

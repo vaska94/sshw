@@ -1,8 +1,6 @@
 package sshw
 
 import (
-	"fmt"
-	"io/ioutil"
 	"os"
 	"os/user"
 	"path"
@@ -99,7 +97,7 @@ func LoadSshConfig() error {
 	cfg, _ := ssh_config.Decode(f)
 	var nc []*Node
 	for _, host := range cfg.Hosts {
-		alias := fmt.Sprintf("%s", host.Patterns[0])
+		alias := host.Patterns[0].String()
 		hostName, err := cfg.Get(alias, "HostName")
 		if err != nil {
 			return err
@@ -134,14 +132,14 @@ func LoadConfigBytes(names ...string) ([]byte, error) {
 	}
 	// homedir
 	for i := range names {
-		sshw, err := ioutil.ReadFile(path.Join(u.HomeDir, names[i]))
+		sshw, err := os.ReadFile(path.Join(u.HomeDir, names[i]))
 		if err == nil {
 			return sshw, nil
 		}
 	}
 	// relative
 	for i := range names {
-		sshw, err := ioutil.ReadFile(names[i])
+		sshw, err := os.ReadFile(names[i])
 		if err == nil {
 			return sshw, nil
 		}
