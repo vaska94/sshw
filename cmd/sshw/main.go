@@ -5,9 +5,7 @@ import (
 	"fmt"
 	"os"
 	"runtime"
-	"strings"
 
-	"github.com/manifoldco/promptui"
 	"github.com/yinheli/sshw"
 )
 
@@ -21,11 +19,6 @@ var (
 
 	log = sshw.GetLogger()
 
-	templates = &promptui.SelectTemplates{
-		Label:    "✨ {{ . | green}}",
-		Active:   "➤ {{ .Name | cyan  }}{{if .Alias}}({{.Alias | yellow}}){{end}} {{if .Host}}{{if .User}}{{.User | faint}}{{`@` | faint}}{{end}}{{.Host | faint}}{{end}}",
-		Inactive: "  {{.Name | faint}}{{if .Alias}}({{.Alias | faint}}){{end}} {{if .Host}}{{if .User}}{{.User | faint}}{{`@` | faint}}{{end}}{{.Host | faint}}{{end}}",
-	}
 )
 
 func findAlias(nodes []*sshw.Node, nodeAlias string) *sshw.Node {
@@ -94,34 +87,8 @@ func main() {
 }
 
 func choose(parent, trees []*sshw.Node) *sshw.Node {
-	prompt := promptui.Select{
-		Label:        "select host",
-		Items:        trees,
-		Templates:    templates,
-		Size:         20,
-		HideSelected: true,
-		Searcher: func(input string, index int) bool {
-			node := trees[index]
-			content := fmt.Sprintf("%s %s %s", node.Name, node.User, node.Host)
-			if strings.Contains(input, " ") {
-				for _, key := range strings.Split(input, " ") {
-					key = strings.TrimSpace(key)
-					if key != "" {
-						if !strings.Contains(content, key) {
-							return false
-						}
-					}
-				}
-				return true
-			}
-			if strings.Contains(content, input) {
-				return true
-			}
-			return false
-		},
-	}
-	index, _, err := prompt.Run()
-	if err != nil {
+	index, err := selectNode("select host", trees, 20)
+	if err != nil || index < 0 {
 		return nil
 	}
 
