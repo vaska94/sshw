@@ -1,6 +1,6 @@
 # sshw
 
-![GitHub](https://img.shields.io/github/license/yinheli/sshw) ![GitHub tag (latest by date)](https://img.shields.io/github/v/tag/yinheli/sshw)
+![GitHub](https://img.shields.io/github/license/vaska94/sshw) ![GitHub tag (latest by date)](https://img.shields.io/github/v/tag/vaska94/sshw)
 
 ssh client wrapper for automatic login.
 
@@ -11,10 +11,10 @@ ssh client wrapper for automatic login.
 use `go get`
 
 ```
-go install github.com/yinheli/sshw/cmd/sshw@latest
+go install github.com/vaska94/sshw/cmd/sshw@latest
 ```
 
-or download binary from [releases](//github.com/yinheli/sshw/releases).
+or download binary from [releases](//github.com/vaska94/sshw/releases).
 
 ## config
 

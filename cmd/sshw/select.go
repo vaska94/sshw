@@ -23,7 +23,8 @@ const (
 )
 
 func matchNode(input string, node *sshw.Node) bool {
-	content := node.Name + " " + node.User + " " + node.Host
+	content := strings.ToLower(node.Name + " " + node.User + " " + node.Host)
+	input = strings.ToLower(input)
 	if strings.Contains(input, " ") {
 		for _, key := range strings.Split(input, " ") {
 			key = strings.TrimSpace(key)
