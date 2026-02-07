@@ -13,7 +13,6 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/atrox/homedir"
 	"golang.org/x/crypto/ssh"
 	"golang.org/x/crypto/ssh/agent"
 	"golang.org/x/crypto/ssh/terminal"
@@ -54,7 +53,7 @@ func getAgentConn(agentPath string) (net.Conn, error) {
 	if len(agentPath) == 0 {
 		return nil, nil
 	}
-	expandedPath, err := homedir.Expand(agentPath)
+	expandedPath, err := expandHome(agentPath)
 	if err != nil {
 		return nil, err
 	}
@@ -83,7 +82,7 @@ func setupKeyFileAuth(node *Node) (ssh.AuthMethod, cleanupFunc, error) {
 		return nil, nil, nil
 	}
 
-	keyPath, err := homedir.Expand(keyPath)
+	keyPath, err := expandHome(keyPath)
 	if err != nil {
 		return nil, nil, err
 	}

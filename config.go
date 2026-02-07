@@ -9,7 +9,6 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/atrox/homedir"
 	"github.com/kevinburke/ssh_config"
 	"golang.org/x/crypto/ssh"
 	"gopkg.in/yaml.v2"
@@ -117,9 +116,9 @@ func LoadSshConfig() error {
 			c.User, _ = cfg.Get(alias, "User")
 			c.Port, _ = strconv.Atoi(port)
 			keyPath, _ := cfg.Get(alias, "IdentityFile")
-			c.KeyPath, _ = homedir.Expand(keyPath)
+			c.KeyPath, _ = expandHome(keyPath)
 			agentPath, _ := cfg.Get(alias, "IdentityAgent")
-			c.AgentPath, _ = homedir.Expand(agentPath)
+			c.AgentPath, _ = expandHome(agentPath)
 			nc = append(nc, c)
 			// fmt.Println(c.Alias, c.Host, c.User, c.Port, c.KeyPath)
 		}

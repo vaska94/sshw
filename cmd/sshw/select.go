@@ -52,16 +52,16 @@ func formatActive(n *sshw.Node) string {
 }
 
 func formatInactive(n *sshw.Node) string {
-	s := "    " + ansiFaint + n.Name + ansiReset
+	s := "    " + n.Name
 	if n.Alias != "" {
-		s += "(" + ansiFaint + n.Alias + ansiReset + ")"
+		s += "(" + n.Alias + ")"
 	}
 	if n.Host != "" {
 		s += " "
 		if n.User != "" {
 			s += ansiFaint + n.User + "@" + ansiReset
 		}
-		s += ansiFaint + n.Host + ansiReset
+		s += n.Host
 	}
 	return s
 }
