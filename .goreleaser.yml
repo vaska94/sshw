@@ -12,7 +12,7 @@ metadata:
 builds:
   - binary: sshw
 
-    main: ./cmd/sshw/main.go
+    main: ./cmd/sshw/
     env:
       - CGO_ENABLED=0
     flags:
