@@ -12,9 +12,9 @@ import (
 // ANSI escape sequences
 const (
 	ansiReset     = "\033[0m"
-	ansiCyan      = "\033[36m"
-	ansiYellow    = "\033[33m"
-	ansiGreen     = "\033[32m"
+	ansiCyan      = "\033[1;36m"
+	ansiYellow    = "\033[1;33m"
+	ansiGreen     = "\033[1;32m"
 	ansiFaint     = "\033[2m"
 	ansiClearLine = "\033[2K"
 	ansiCursorUp  = "\033[A"
