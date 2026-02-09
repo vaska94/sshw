@@ -41,7 +41,7 @@ func (l *logger) Error(args ...interface{}) {
 }
 
 func (l *logger) Errorf(format string, args ...interface{}) {
-	l.printlnf("[level]", format, args...)
+	l.printlnf("[error]", format, args...)
 }
 
 func (l *logger) println(level string, args ...interface{}) {

@@ -2,6 +2,7 @@ package sshw
 
 import (
 	"bufio"
+	"bytes"
 	"fmt"
 	"io"
 	"net"
@@ -39,6 +40,7 @@ var (
 
 type Client interface {
 	Login()
+	CopyID(pubKey []byte) error
 }
 
 type cleanupFunc func()
@@ -212,62 +214,88 @@ func (c *defaultClient) close() {
 	}
 }
 
-func (c *defaultClient) Login() {
-	defer c.close()
-
+func (c *defaultClient) connect() (*ssh.Client, error) {
 	host := c.node.Host
 	port := strconv.Itoa(c.node.port())
 	jNodes := c.node.Jump
-
-	var client *ssh.Client
 
 	if len(jNodes) > 0 {
 		jNode := jNodes[0]
 		jc := genSSHConfig(jNode)
 		proxyClient, err := ssh.Dial("tcp", net.JoinHostPort(jNode.Host, strconv.Itoa(jNode.port())), jc.clientConfig)
 		if err != nil {
-			l.Error(err)
-			return
+			return nil, err
 		}
 		conn, err := proxyClient.Dial("tcp", net.JoinHostPort(host, port))
 		if err != nil {
-			l.Error(err)
-			return
+			return nil, err
 		}
 		ncc, chans, reqs, err := ssh.NewClientConn(conn, net.JoinHostPort(host, port), c.clientConfig)
 		if err != nil {
-			l.Error(err)
-			return
+			return nil, err
 		}
-		client = ssh.NewClient(ncc, chans, reqs)
-	} else {
-		client1, err := ssh.Dial("tcp", net.JoinHostPort(host, port), c.clientConfig)
-		client = client1
-		if err != nil {
-			msg := err.Error()
-			// use terminal password retry
-			if strings.Contains(msg, "no supported methods remain") && !strings.Contains(msg, "password") {
-				fmt.Printf("%s@%s's password:", c.clientConfig.User, host)
-				var b []byte
-				b, err = term.ReadPassword(int(syscall.Stdin))
-				if err == nil {
-					p := string(b)
-					if p != "" {
-						c.clientConfig.Auth = append(c.clientConfig.Auth, ssh.Password(p))
-					}
-					fmt.Println()
-					client, err = ssh.Dial("tcp", net.JoinHostPort(host, port), c.clientConfig)
-				}
+		return ssh.NewClient(ncc, chans, reqs), nil
+	}
+
+	client, err := ssh.Dial("tcp", net.JoinHostPort(host, port), c.clientConfig)
+	if err != nil {
+		msg := err.Error()
+		// use terminal password retry
+		if strings.Contains(msg, "no supported methods remain") && !strings.Contains(msg, "password") {
+			fmt.Printf("%s@%s's password:", c.clientConfig.User, host)
+			b, err := term.ReadPassword(int(syscall.Stdin))
+			if err != nil {
+				return nil, err
 			}
+			p := string(b)
+			if p != "" {
+				c.clientConfig.Auth = append(c.clientConfig.Auth, ssh.Password(p))
+			}
+			fmt.Println()
+			client, err = ssh.Dial("tcp", net.JoinHostPort(host, port), c.clientConfig)
+			if err != nil {
+				return nil, err
+			}
+		} else {
+			return nil, err
 		}
-		if err != nil {
-			l.Error(err)
-			return
-		}
+	}
+	return client, nil
+}
+
+func (c *defaultClient) CopyID(pubKey []byte) error {
+	defer c.close()
+
+	client, err := c.connect()
+	if err != nil {
+		return err
 	}
 	defer client.Close()
 
-	l.Infof("connect server ssh -p %d %s@%s version: %s\n", c.node.port(), c.node.user(), host, string(client.ServerVersion()))
+	session, err := client.NewSession()
+	if err != nil {
+		return err
+	}
+	defer session.Close()
+
+	session.Stdin = bytes.NewReader(pubKey)
+	session.Stdout = os.Stdout
+	session.Stderr = os.Stderr
+
+	return session.Run("mkdir -p ~/.ssh && chmod 700 ~/.ssh && cat >> ~/.ssh/authorized_keys && chmod 600 ~/.ssh/authorized_keys")
+}
+
+func (c *defaultClient) Login() {
+	defer c.close()
+
+	client, err := c.connect()
+	if err != nil {
+		l.Error(err)
+		return
+	}
+	defer client.Close()
+
+	l.Infof("connect server ssh -p %d %s@%s version: %s\n", c.node.port(), c.node.user(), c.node.Host, string(client.ServerVersion()))
 
 	session, err := client.NewSession()
 	if err != nil {
@@ -332,6 +360,9 @@ func (c *defaultClient) Login() {
 		session.Close()
 	}()
 
+	done := make(chan struct{})
+	defer close(done)
+
 	// interval get terminal size
 	// fix resize issue
 	go func() {
@@ -340,6 +371,11 @@ func (c *defaultClient) Login() {
 			oh = h
 		)
 		for {
+			select {
+			case <-done:
+				return
+			default:
+			}
 			cw, ch, err := term.GetSize(fd)
 			if err != nil {
 				break
@@ -360,8 +396,12 @@ func (c *defaultClient) Login() {
 	// send keepalive
 	go func() {
 		for {
-			time.Sleep(time.Second * 10)
-			client.SendRequest("keepalive@openssh.com", false, nil)
+			select {
+			case <-done:
+				return
+			case <-time.After(time.Second * 10):
+				client.SendRequest("keepalive@openssh.com", false, nil)
+			}
 		}
 	}()
 

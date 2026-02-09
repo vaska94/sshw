@@ -3,12 +3,11 @@ package sshw
 import (
 	"os"
 	"os/user"
-	"path"
+	"path/filepath"
 	"strconv"
 	"time"
 
 	"github.com/kevinburke/ssh_config"
-	"golang.org/x/crypto/ssh"
 	"gopkg.in/yaml.v2"
 )
 
@@ -50,17 +49,6 @@ func (n *Node) port() int {
 	return n.Port
 }
 
-func (n *Node) password() ssh.AuthMethod {
-	if n.Password == "" {
-		return nil
-	}
-	return ssh.Password(n.Password)
-}
-
-func (n *Node) alias() string {
-	return n.Alias
-}
-
 var (
 	config []*Node
 )
@@ -91,10 +79,18 @@ func LoadSshConfig() error {
 		l.Error(err)
 		return nil
 	}
-	f, _ := os.Open(path.Join(u.HomeDir, ".ssh/config"))
+	f, err2 := os.Open(filepath.Join(u.HomeDir, ".ssh/config"))
+	if err2 != nil {
+		l.Errorf("open ssh config: %v", err2)
+		return nil
+	}
 	defer f.Close()
 
-	cfg, _ := ssh_config.Decode(f)
+	cfg, err2 := ssh_config.Decode(f)
+	if err2 != nil {
+		l.Errorf("decode ssh config: %v", err2)
+		return nil
+	}
 	var nc []*Node
 	for _, host := range cfg.Hosts {
 		alias := host.Patterns[0].String()
@@ -132,7 +128,7 @@ func LoadConfigBytes(names ...string) ([]byte, error) {
 	}
 	// homedir
 	for i := range names {
-		sshw, err := os.ReadFile(path.Join(u.HomeDir, names[i]))
+		sshw, err := os.ReadFile(filepath.Join(u.HomeDir, names[i]))
 		if err == nil {
 			return sshw, nil
 		}

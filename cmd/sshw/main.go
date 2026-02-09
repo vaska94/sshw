@@ -4,6 +4,7 @@ import (
 	"flag"
 	"fmt"
 	"os"
+	"path/filepath"
 	"runtime"
 
 	"github.com/yinheli/sshw"
@@ -16,6 +17,7 @@ var (
 	V     = flag.Bool("version", false, "show version")
 	H     = flag.Bool("help", false, "show help")
 	S     = flag.Bool("s", false, "use local ssh config '~/.ssh/config'")
+	CopyID = flag.Bool("copy-id", false, "copy SSH public key to selected host")
 
 	log = sshw.GetLogger()
 
@@ -27,7 +29,9 @@ func findAlias(nodes []*sshw.Node, nodeAlias string) *sshw.Node {
 			return node
 		}
 		if len(node.Children) > 0 {
-			return findAlias(node.Children, nodeAlias)
+			if result := findAlias(node.Children, nodeAlias); result != nil {
+				return result
+			}
 		}
 	}
 	return nil
@@ -79,6 +83,33 @@ func main() {
 
 	node := choose(nil, sshw.GetConfig())
 	if node == nil {
+		return
+	}
+
+	if *CopyID {
+		home, err := os.UserHomeDir()
+		if err != nil {
+			log.Error("cannot find home directory:", err)
+			os.Exit(1)
+		}
+		pubKey, err := os.ReadFile(filepath.Join(home, ".ssh", "id_rsa.pub"))
+		if err != nil {
+			pubKey, err = os.ReadFile(filepath.Join(home, ".ssh", "id_ed25519.pub"))
+			if err != nil {
+				log.Error("no public key found (~/.ssh/id_rsa.pub or ~/.ssh/id_ed25519.pub)")
+				os.Exit(1)
+			}
+		}
+		client := sshw.NewClient(node)
+		if err := client.CopyID(pubKey); err != nil {
+			log.Error("copy-id failed:", err)
+			os.Exit(1)
+		}
+		user := node.User
+		if user == "" {
+			user = "root"
+		}
+		fmt.Printf("public key copied to %s@%s\n", user, node.Host)
 		return
 	}
 
