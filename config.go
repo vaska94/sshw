@@ -1,6 +1,7 @@
 package sshw
 
 import (
+	"fmt"
 	"os"
 	"os/user"
 	"path/filepath"
@@ -76,20 +77,17 @@ func LoadConfig() error {
 func LoadSshConfig() error {
 	u, err := user.Current()
 	if err != nil {
-		l.Error(err)
-		return nil
+		return fmt.Errorf("get current user: %w", err)
 	}
 	f, err := os.Open(filepath.Join(u.HomeDir, ".ssh/config"))
 	if err != nil {
-		l.Errorf("open ssh config: %v", err)
-		return nil
+		return fmt.Errorf("open ssh config: %w", err)
 	}
 	defer f.Close()
 
 	cfg, err := ssh_config.Decode(f)
 	if err != nil {
-		l.Errorf("decode ssh config: %v", err)
-		return nil
+		return fmt.Errorf("decode ssh config: %w", err)
 	}
 	var nc []*Node
 	for _, host := range cfg.Hosts {
@@ -114,7 +112,7 @@ func LoadSshConfig() error {
 			agentPath, _ := cfg.Get(alias, "IdentityAgent")
 			c.AgentPath, _ = expandHome(agentPath)
 			nc = append(nc, c)
-}
+		}
 	}
 	config = nc
 	return nil
@@ -125,12 +123,14 @@ func LoadConfigBytes(names ...string) ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
+	var lastErr error
 	// homedir
 	for i := range names {
 		sshw, err := os.ReadFile(filepath.Join(u.HomeDir, names[i]))
 		if err == nil {
 			return sshw, nil
 		}
+		lastErr = err
 	}
 	// relative
 	for i := range names {
@@ -138,8 +138,9 @@ func LoadConfigBytes(names ...string) ([]byte, error) {
 		if err == nil {
 			return sshw, nil
 		}
+		lastErr = err
 	}
-	return nil, err
+	return nil, lastErr
 }
 
 // expandHome expands a leading ~ in path to the user's home directory.

@@ -92,11 +92,11 @@ func main() {
 			log.Error("cannot find home directory:", err)
 			os.Exit(1)
 		}
-		pubKey, err := os.ReadFile(filepath.Join(home, ".ssh", "id_rsa.pub"))
+		pubKey, err := os.ReadFile(filepath.Join(home, ".ssh", "id_ed25519.pub"))
 		if err != nil {
-			pubKey, err = os.ReadFile(filepath.Join(home, ".ssh", "id_ed25519.pub"))
+			pubKey, err = os.ReadFile(filepath.Join(home, ".ssh", "id_rsa.pub"))
 			if err != nil {
-				log.Error("no public key found (~/.ssh/id_rsa.pub or ~/.ssh/id_ed25519.pub)")
+				log.Error("no public key found (~/.ssh/id_ed25519.pub or ~/.ssh/id_rsa.pub)")
 				os.Exit(1)
 			}
 		}
