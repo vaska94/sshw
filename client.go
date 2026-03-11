@@ -3,6 +3,7 @@ package sshw
 import (
 	"bufio"
 	"bytes"
+	"context"
 	"fmt"
 	"io"
 	"net"
@@ -111,14 +112,17 @@ func setupDefaultKeyAuth(node *Node) (ssh.AuthMethod, cleanupFunc, error) {
 	if err != nil {
 		return nil, nil, err
 	}
-	keyPath := filepath.Join(u.HomeDir, ".ssh/id_rsa")
-	bytes, err := os.ReadFile(keyPath)
-	if err == nil && len(bytes) > 0 {
+	for _, name := range []string{"id_ed25519", "id_rsa"} {
+		keyPath := filepath.Join(u.HomeDir, ".ssh", name)
+		data, err := os.ReadFile(keyPath)
+		if err != nil || len(data) == 0 {
+			continue
+		}
 		var signer ssh.Signer
 		if node.Passphrase != "" {
-			signer, err = ssh.ParsePrivateKeyWithPassphrase(bytes, []byte(node.Passphrase))
+			signer, err = ssh.ParsePrivateKeyWithPassphrase(data, []byte(node.Passphrase))
 		} else {
-			signer, err = ssh.ParsePrivateKey(bytes)
+			signer, err = ssh.ParsePrivateKey(data)
 		}
 		if err == nil {
 			return ssh.PublicKeys(signer), nil, nil
@@ -350,18 +354,22 @@ func (c *defaultClient) Login() {
 	for i := range c.node.CallbackShells {
 		shell := c.node.CallbackShells[i]
 		time.Sleep(shell.Delay * time.Millisecond)
-		stdinPipe.Write([]byte(shell.Cmd + "\r"))
+		if _, err := stdinPipe.Write([]byte(shell.Cmd + "\r")); err != nil {
+			l.Errorf("callback shell write error: %v", err)
+		}
 	}
 
 	// change stdin to user
 	go func() {
 		_, err = io.Copy(stdinPipe, os.Stdin)
-		l.Error(err)
+		if err != nil {
+			l.Error(err)
+		}
 		session.Close()
 	}()
 
-	done := make(chan struct{})
-	defer close(done)
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
 
 	// interval get terminal size
 	// fix resize issue
@@ -372,9 +380,9 @@ func (c *defaultClient) Login() {
 		)
 		for {
 			select {
-			case <-done:
+			case <-ctx.Done():
 				return
-			default:
+			case <-time.After(time.Second):
 			}
 			cw, ch, err := term.GetSize(fd)
 			if err != nil {
@@ -389,7 +397,6 @@ func (c *defaultClient) Login() {
 				ow = cw
 				oh = ch
 			}
-			time.Sleep(time.Second)
 		}
 	}()
 
@@ -397,7 +404,7 @@ func (c *defaultClient) Login() {
 	go func() {
 		for {
 			select {
-			case <-done:
+			case <-ctx.Done():
 				return
 			case <-time.After(time.Second * 10):
 				client.SendRequest("keepalive@openssh.com", false, nil)

@@ -79,16 +79,16 @@ func LoadSshConfig() error {
 		l.Error(err)
 		return nil
 	}
-	f, err2 := os.Open(filepath.Join(u.HomeDir, ".ssh/config"))
-	if err2 != nil {
-		l.Errorf("open ssh config: %v", err2)
+	f, err := os.Open(filepath.Join(u.HomeDir, ".ssh/config"))
+	if err != nil {
+		l.Errorf("open ssh config: %v", err)
 		return nil
 	}
 	defer f.Close()
 
-	cfg, err2 := ssh_config.Decode(f)
-	if err2 != nil {
-		l.Errorf("decode ssh config: %v", err2)
+	cfg, err := ssh_config.Decode(f)
+	if err != nil {
+		l.Errorf("decode ssh config: %v", err)
 		return nil
 	}
 	var nc []*Node
@@ -114,8 +114,7 @@ func LoadSshConfig() error {
 			agentPath, _ := cfg.Get(alias, "IdentityAgent")
 			c.AgentPath, _ = expandHome(agentPath)
 			nc = append(nc, c)
-			// fmt.Println(c.Alias, c.Host, c.User, c.Port, c.KeyPath)
-		}
+}
 	}
 	config = nc
 	return nil
