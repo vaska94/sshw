@@ -353,7 +353,7 @@ func (c *defaultClient) Login() {
 	// then callback
 	for i := range c.node.CallbackShells {
 		shell := c.node.CallbackShells[i]
-		time.Sleep(shell.Delay * time.Millisecond)
+		time.Sleep(shell.Delay)
 		if _, err := stdinPipe.Write([]byte(shell.Cmd + "\r")); err != nil {
 			l.Errorf("callback shell write error: %v", err)
 		}

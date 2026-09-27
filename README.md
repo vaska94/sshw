@@ -79,3 +79,5 @@ config example:
     - { delay: 1500, cmd: 0 }
     - { cmd: "echo 1" }
 ```
+
+`delay` waits before sending `cmd`. Use milliseconds (`1500`) or a duration (`1.5s`, `200ms`).
