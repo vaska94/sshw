@@ -9,7 +9,7 @@ import (
 	"time"
 
 	"github.com/kevinburke/ssh_config"
-	"gopkg.in/yaml.v2"
+	"go.yaml.in/yaml/v3"
 )
 
 type Node struct {
@@ -30,6 +30,37 @@ type Node struct {
 type CallbackShell struct {
 	Cmd   string        `yaml:"cmd"`
 	Delay time.Duration `yaml:"delay"`
+}
+
+// UnmarshalYAML accepts delay as a number of milliseconds (1500)
+// or as a duration string (1.5s).
+func (s *CallbackShell) UnmarshalYAML(value *yaml.Node) error {
+	var raw struct {
+		Cmd   string    `yaml:"cmd"`
+		Delay yaml.Node `yaml:"delay"`
+	}
+	if err := value.Decode(&raw); err != nil {
+		return err
+	}
+	s.Cmd = raw.Cmd
+	s.Delay = 0
+	if raw.Delay.Kind == 0 || raw.Delay.Tag == "!!null" {
+		return nil
+	}
+	if raw.Delay.Kind != yaml.ScalarNode {
+		return fmt.Errorf("line %d: delay must be milliseconds or a duration like 1.5s", raw.Delay.Line)
+	}
+	if ms, err := strconv.ParseInt(raw.Delay.Value, 10, 64); err == nil {
+		s.Delay = time.Duration(ms) * time.Millisecond
+	} else if d, err := time.ParseDuration(raw.Delay.Value); err == nil {
+		s.Delay = d
+	} else {
+		return fmt.Errorf("line %d: invalid delay %q: use milliseconds or a duration like 1.5s", raw.Delay.Line, raw.Delay.Value)
+	}
+	if s.Delay < 0 {
+		return fmt.Errorf("line %d: delay must not be negative", raw.Delay.Line)
+	}
+	return nil
 }
 
 func (n *Node) String() string {
